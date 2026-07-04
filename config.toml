@@ -1,0 +1,850 @@
+# FlowStation TETRA 配置文件
+# 启动前请务必根据您所在司法管辖区的法律规定进行编辑
+
+config_version = "0.6"
+
+# 堆栈工作模式："Bs"（基站）、"Ms"（移动台）或"Mon"（监听模式）
+stack_mode = "Bs"
+
+# 取消注释可启用详细日志。日志文件增长迅速，会带来额外负载。
+# debug_log = "./verbose_log.txt"
+
+# 可选的 systemd 服务单元名称，供 SDS 命令控制（重启/关机）以及
+# 仪表板的 OTA 更新按钮使用。未设置时，FlowStation 会通过
+# /proc/self/cgroup 自动检测，若检测失败则回退到
+# "tetra-bluestation.service"。如果您的 unit 名称自定义了，请在此设置。
+# 环境变量 FLOWSTATION_SERVICE_UNIT 同样有效。
+# service_name = "tetra"
+
+###############################################################################
+# 回退配置
+#
+# 如果 FlowStation 解析此配置文件失败（例如在仪表板中编辑出错），
+# 它会自动尝试同路径下带有 ".fallback" 后缀的回退文件 —
+# 例如 /opt/tetra/config.toml.fallback
+#
+# 回退文件永远不会被自动覆盖。您只需用一份正确的配置创建一次即可：
+#
+#   cp config.toml config.toml.fallback
+#
+# 当使用回退配置时，仪表板顶部会显示一个持久的红色警告条，
+# 并记录主配置的解析错误。这样您就可以在仪表板中修复损坏的
+# config.toml，同时不会丢失远程访问权限。
+###############################################################################
+
+###############################################################################
+
+[phy_io]
+
+# 输入类型：设置为 SoapySdr
+backend = "SoapySdr"
+
+# 调试/测试代码。捕获文件增长迅速。
+# dl_tx_file = "./dl_output.bin"    # 调试用途；取消注释可保存生成的下行射频样本
+# ul_rx_file = "./ul_output.bin"    # 调试用途；取消注释可保存接收到的上行射频样本
+#
+# 读取端镜像功能：从文件回放射频样本，代替 SDR 输入。
+# 正常（实时 SDR）工作模式下请保持注释状态。
+# ul_input_file = "./ul_input.bin"  # 调试用途；用录制的上行射频样本代替无线电输入
+# dl_input_file = "./dl_input.bin"  # 调试用途；用录制的下行射频样本代替生成
+
+[phy_io.soapysdr]
+# 发射 tx（下行）和接收 rx（上行）频率，单位为 Hz
+# !!! 请记得同步修改 cell_info 部分中对应的字段。
+tx_freq = 439925000.000
+rx_freq = 431925000.000
+
+# 如果您的 SDR 存在不可忽略的调谐误差，请在此调整
+ppm_err = 0.0
+
+# 可选的采样率（样本/秒），同时应用于接收和发射。
+# 未设置时将使用设备特定的默认值。
+# sample_rate = 1800000
+
+# 可选的 SDR 中心频率（Hz），用于双载波 / 调相操作。
+# 单载波场景下保持注释，无线电直接调谐到 tx_freq/rx_freq。
+# 相邻载波场景下，将中心频率设在 main_carrier 和 secondary_carrier
+# 正中间，使两个 25 kHz 信道都能落在同一个 SDR 通带内。
+tx_center_freq = 439937500
+rx_center_freq = 431937500
+
+# 可选的多通道 SDR（如 LimeSDR、USRP）的接收/发射通道索引。
+# 未设置时将使用设备默认通道（通常为 0）。
+# rx_channel = 0
+# tx_channel = 0
+
+################################################################################################
+## 可选：指定设备、天线、增益                                                              ##
+## 用 SoapySDRUtil --probe 检查您的设备                                                   ##
+## 或参考：https://github.com/MidnightBlueLabs/tetra-bluestation-docs/wiki/03-Configuration ##
+################################################################################################
+
+# 可选的设备选择参数。
+# 未指定时将自动选择找到的第一个兼容设备。
+# device = "driver=plutosdr,uri=ip:192.168.42.42"
+# device = "driver=lime,serial=123456789"
+
+# 可选的天线选择（覆盖设备默认值）
+# rx_antenna = "LNAW"
+# tx_antenna = "BAND2"
+
+################################################################################################
+## 增益单元                                                                                  ##
+## 增益按单元设置，可多次配置：您的设备暴露了多少个增益级，就添加多少行，                    ##
+## 格式为 rx_gain_<单元名> / tx_gain_<单元名>。<单元名> 来自设备本身                        ##
+## — 用以下命令列出有效名称：SoapySDRUtil --probe                                            ##
+## （例如：PlutoSDR → PGA；LimeSDR → LNA、TIA、PGA、PAD 等）                                ##
+##                                                                                           ##
+## 值必须为数字（整数或浮点数）。非数值会导致启动失败，提示                                    ##
+## "RX/TX gain value must be a number"。注意：单独的 rx_gain = 30  不被接受 — 必须使用       ##
+## rx_gain_<单元名> 格式。未指定的单元将使用设备默认值。                                      ##
+################################################################################################
+
+# 示例：设置多个接收增益级
+# rx_gain_lna = 30.0
+# rx_gain_tia = 9.0
+# rx_gain_pga = 12.0
+
+# 示例：设置多个发射增益级
+# tx_gain_pad = 50.0
+# tx_gain_iamp = 0.0
+
+###############################################################################
+
+[net_info]
+# 移动国家代码（MCC）— 标识您的国家
+mcc = 901  
+
+# 移动网络代码（MNC）— 标识 TETRA 网络
+# 请确保该 MNC 可以合法使用，必要时咨询相关主管部门
+mnc = 9999
+
+###############################################################################
+
+[cell_info]
+
+# 参见 ETSI TS 100 392-15 V1.5.1 第 6 条：双工间隔
+freq_band = 4                       # 400MHz 频段
+main_carrier = 1597                 # + 1597 × 25kHz = 39925kHz
+secondary_carrier = 1598         # 可选的第二载波，通常为相邻载波（+/- 25 kHz）
+dual_carrier_enabled = true        # 仪表板中"双载波 ON/OFF"开关，控制上述载波。
+                                     # 省略 = 开启。设为 false 可保留编号但以单载波运行。
+duplex_spacing = 3                  # 上行与下行之间采用 5MHz 间隔（适用于 400 MHz 频段）
+# custom_duplex_spacing = 7600000   # 除非您在无线电中烧录了自定义双工间隔，否则请勿取消注释
+freq_offset = 0                     # 载波偏移量，通常为 0。可选值：0、6250、-6250、12500 Hz
+reverse_operation = false           # false：上行低于下行；true：上行高于下行
+
+# 位置区标识
+location_area = 2
+
+# 色码（0-63），用于区分同一频率上的相邻小区
+colour_code = 1
+
+# 通过 D-NWRK-BROADCAST 广播时间时所用的 IANA 时区。设置后，基站将每隔
+# 约一个超帧（约 61 秒）广播一次 UTC 时间和本地时区偏移量，
+# 以便无线电设备同步时钟。夏令时会自动处理。
+timezone = "Asia/Shanghai"
+
+# 本小区的本地 SSI 范围。在范围内的流量不会离开本小区。
+# 如果启用，本设置将覆盖 brew 部分中的所有相关设置。
+# 来自 Brew、目标为这些范围的入站流量同样会被拒绝。
+# 范围终点为包含关系 — 即结束值包含在范围内。
+local_ssi_ranges = [
+    [0, 90],
+]
+
+# 小区服务选项。除非您清楚自己在做什么，否则请保持默认。
+system_wide_services = true  # 设为 false 时，无线电将以回退模式工作（启用 Brew 后忽略此设置）
+voice_service = true
+
+# 组呼保持时长（秒）。
+# 非活动组呼的电路在最后一个说话人释放话权后，
+# 会继续保持打开状态，超过此时长后才断开。
+# 保持期间，任何移动台均可直接恢复话权，无需重新走 D-SETUP/D-CONNECT 流程。
+# 默认值：5 秒。有效范围：0–300。
+hangtime_secs = 5
+
+# 针对老旧无线电的兼容方案：在保持期间，若同一说话人再次抢到话权，
+# 则拆除当前组呼电路而非复用它，使下一次 PTT 走完整的 U-SETUP/D-CONNECT/D-SETUP
+# 流程。旧款摩托罗拉设备（MR5/MR19 时代）会确认快速的抢权授权，但从未真正
+# 开启 TCH/S 业务信道，导致组内其他人听到"无声结束"；强制重新建立呼叫可解决
+# 此问题。默认关闭 — 新型无线电能正常复用电路并受益于更低的抢权延迟，
+# 因此仅当小区中仍在使用这些老旧设备时才启用。
+release_group_on_same_speaker_retake = true
+
+# DGNA（动态组编号分配）空中接口机制。
+# 开启（默认）：操作员发起的重组以 SS-DGNA ASSIGN/DEASSIGN 形式通过 CMCE
+# D-FACILITY 发送（ETSI TS 100 392-12-22 V1.5.1；传输层 EN 300 392-9 V1.7.1）。
+# 该 SS PDU 在一步操作中同时*定义*组（助记符/参数）并*附着*组，这正是动态
+# 通话组能在真实终端上显示并可选中的原因。
+# 关闭：回退到仅 MM 层的传统 D-ATTACH/DETACH GROUP IDENTITY
+#（EN 300 392-2 V2.4.1 第 16.8 条），该方式仅切换无线电已知组的 L2 附着状态 —
+# 对于无线电从未被告知过的裸 GSSI，它没有可显示或选择的名称。
+# 保留此开关作为回退选项。
+# 注意：即使发送了正确的 SS-DGNA，如果终端写频（codeplug）中未配置 DGNA 通知，
+# 终端也不会显示任何内容 — 这是写频配置的缺失，而非协议栈缺陷。
+# 省略 = true。仅当需要回退到传统路径时设为 false。
+# dgna_use_ss_facility = true
+# 仪表板隐藏高级选择器时使用的默认 SS-DGNA 附着模式。
+# 有效值：0..5（ETSI 表 51）。默认值：0 = 永久附着 (AttachedPermanently)。
+# dgna_attachment_mode = 0
+
+# 最大通话时长（秒）— 相当于 FlowStation 对 ETSI EN 300 392-2 §14.9.1 T310 的实现。
+# 超过此时长后，无论通话是否活跃，基站都会发送 D-RELEASE。
+# 0 表示不限制（无限长 — 通话将持续到 U-DISCONNECT 或保持超时）。
+# 默认值：120。有效范围：30–86400，设为 0 表示无限制。
+call_timeout_secs = 600
+
+# 上行不活动超时（秒）：若在此时间内未从发起通话的移动台
+# 收到任何语音帧，基站将强制进入 TX-CEASED 状态并开始保持计时。
+# 必须大于 T.213（1 秒）以容忍 DTX 和短暂的射频衰落。
+# 默认值：3 秒。有效范围：1–30。
+# ul_inactivity_secs = 3
+
+# 周期性注册间隔（秒）— 相当于 FlowStation 对 ETSI T351 的实现。
+# 移动台必须在此间隔内通过 D-LOCATION-UPDATE-ACCEPT（周期位置更新）
+# 重新注册。
+# 超过该时限后，基站会通过 D-LOCATION-UPDATE-COMMAND（按 ISSI 寻址）
+# 重新吸引终端，并保持其注册信息和组归属关系 —
+# 基站不会发送 REJECT(ExpiryOfTimer)，也不会移除客户端。
+# 这样做是有意为之：移除会清空摩托罗拉设备中存储的组信息，
+# 导致下次无组报告的重新注册后没有任何组可恢复归属（PTT 被拒绝），
+# 而 REJECT(ExpiryOfTimer) 会使摩托罗拉设备显示"无服务"。设备消失后，
+# 基站仅在每个间隔周期尝试重新吸引一次，设备返回时自动重新归属。
+# 0 = 禁用 — 注册永不过期。
+# 默认值：3600（1 小时）。非零时的有效范围：60–86400。
+periodic_registration_secs = 3600
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 可选：额外的小区服务标志（在 SYSINFO 广播中通告）。
+# 除非您清楚自己在做什么，否则请保持默认。
+# registration              = true   # 小区接受移动台注册（位置更新）
+# deregistration            = true   # 小区接受移动台注销
+# priority_cell             = false  # 将本小区通告为小区重选的优先小区
+# no_minimum_mode           = false  # 小区永不回退到最小模式
+# migration                 = false  # 小区支持网络间迁移
+# circuit_mode_data_service = false  # 通告电路模式数据业务
+# aie_service               = false  # 通告空中接口加密（AIE）业务
+# sndcp_service             = false  # 通告 TETRA 分组数据（SNDCP）业务
+# advanced_link             = false  # 通告高级（增强数据）链路
+
+# ─────────────────────────────────────────────────────────────────────────────
+# 可选：同步 / 低层小区参数。默认值适用于绝大多数
+# 部署场景 — 只有理解了 ETSI MAC/MLE 字段含义才应修改。
+# neighbor_cell_broadcast = 0       # 2 位 D-MLE-SYNC 邻区广播模式（默认 0）
+# late_entry_supported    = false   # 在 D-MLE-SYNC 中通告支持迟后进入（默认 false）
+# system_code             = 3       # 同步系统代码；3 = ETSI EN 300 392-2 V3.1.1（默认 3）
+# sharing_mode            = 0       # 载波共享模式（0 = 连续发射；默认 0）
+# ts_reserved_frames      = 0       # 每个复帧中时分保留的帧数（默认 0）
+# u_plane_dtx             = false   # 通告用户面 DTX（非连续发射）支持（默认 false）
+# frame_18_ext            = false   # 同步中的帧 18 扩展标志（默认 false）
+# ms_txpwr_max_cell       = 4       # 移动台最大发射功率索引（表 18.57；4 = 30 dBm / 1 W；默认 4）
+# subscriber_class        = 0xFFFF  # 16 位掩码，表示本小区允许的用户类别（默认全部）
+
+###############################################################################
+# 可选：邻区广播 (NCB)
+#
+# 向终端广播相邻 TETRA 小区信息，以便终端知晓可以漫游到哪些小区。
+# 随 D-NWRK-BROADCAST PDU 及网络时间一起广播（约 61 秒周期）。
+# 最多支持 7 个邻区。每个邻区必须具有唯一的 cell_identifier_ca
+# 和唯一的 main_carrier_number。
+#
+# 依据：ETSI EN 300 392-2 第 18.5.17 条 / 表 18.64。
+#
+# 每个邻小区添加一个 [[cell_info.neighbor_cells_ca]] 块。
+# 若无邻小区，请将整个部分注释掉。
+#
+# [[cell_info.neighbor_cells_ca]]
+# cell_identifier_ca = 1                # 0-31，在 CA 集群内唯一
+# cell_reselection_types_supported = 1  # 0=不支持, 1=支持通告重选, 2=支持非通告重选, 3=两种都支持
+# neighbor_cell_synchronized = false    # 与本小区时间同步则为 true
+# cell_load_ca = 0                      # 0=低, 1=中低, 2=中高, 3=高
+# main_carrier_number = 1525            # 0-4095，必须与本小区的 main_carrier 不同
+#
+# 可选字段（不需要可省略）：
+# main_carrier_number_extension = 0     # 0-1023（仅当载波编号 > 4095 时需要）
+# mcc = 204                             # 0-1023，仅当邻小区在不同 MCC 下时设置
+# mnc = 1337                            # 0-16383，仅当邻小区在不同 MNC 下时设置
+# location_area = 3                     # 0-16383，邻小区的位置区
+# maximum_ms_transmit_power = 7         # 0-7（0=最低，7=移动台最高发射功率）
+# minimum_rx_access_level = 0           # 0-15（接入小区所需的最小 RSSI 电平）
+# subscriber_class = 0xFFFF             # 16 位掩码，允许接入的用户类别
+# timeshare_cell_information_or_security_parameters = 0  # 0-31
+# tdma_frame_offset = 0                 # 0-63，与本小区的 TDMA 帧偏移
+#
+# 可选：按邻区指定该邻区基站支持的服务（与顶层小区服务标志对应）。
+# 省略则保持未设置状态。
+# [cell_info.neighbor_cells_ca.bs_service_details]
+# registration = true                 # 邻区接受注册
+# deregistration = true               # 邻区接受注销
+# priority_cell = false               # 邻区为优先小区
+# no_minimum_mode = false             # 邻区永不进入最小模式
+# migration = false                   # 邻区支持迁移
+# system_wide_services = false        # 邻区提供全网服务
+# voice_service = true                # 邻区提供语音服务
+# circuit_mode_data_service = false   # 邻区提供电路模式数据
+# sndcp_service = false               # 邻区提供分组数据 (SNDCP)
+# aie_service = false                 # 邻区提供空中接口加密
+# advanced_link = false               # 邻区提供高级（增强数据）链路
+#
+# 两个邻区的示例：
+# [[cell_info.neighbor_cells_ca]]
+# cell_identifier_ca = 1
+# cell_reselection_types_supported = 1
+# neighbor_cell_synchronized = false
+# cell_load_ca = 0
+# main_carrier_number = 1525
+#
+# [[cell_info.neighbor_cells_ca]]
+# cell_identifier_ca = 2
+# cell_reselection_types_supported = 1
+# neighbor_cell_synchronized = false
+# cell_load_ca = 0
+# main_carrier_number = 1529
+###############################################################################
+
+###############################################################################
+# 可选：主模式显示 (PID 220)
+#
+# 通过 D-SDS-DATA 定期向小区内所有移动台广播一段文本。
+# 移动台会将此文本显示在待机屏幕上（例如基站的呼号）。
+# 启用本功能只需保留此子区块即可；删除则禁用。
+#
+# [cell_info.home_mode_display]
+# source_issi = 16777215          # 在无线电上显示的发送方 ISSI（默认值：16777215）
+# interval_multiframes = 96       # 广播间隔（1 复帧 ≈ 1 秒；默认值：96 ≈ 96 秒）
+# protocol_id = 220               # 主模式显示的 SDS 协议 ID（默认值：220）
+# text_coding_scheme = "LATIN"    # "LATIN" = ISO-8859-1, "UTF16" = UCS-2/UTF-16BE
+# text = "FlowStation"            # 无线电屏幕上显示的文本
+###############################################################################
+
+###############################################################################
+# 可选：补充 SDS 广播 (FlowStation)
+#
+# 与主模式显示 (PID 220) 并行发送的第二路周期性 SDS 广播。
+# 机制相同，但协议 ID 和文本均可自定义。
+# 适用于向支持自定义 PID 的无线电发送额外数据。
+# 启用本功能只需保留此子区块即可；删除则禁用。
+#
+# [cell_info.sds_broadcast]
+# source_issi = 16777215          # 在无线电上显示的发送方 ISSI（默认值：0）
+# interval_multiframes = 96       # 广播间隔（1 复帧 ≈ 1 秒；默认值：96 ≈ 96 秒）
+# protocol_id = 130               # SDS 协议 ID（默认值：220 — 请修改以避免冲突）
+# text_coding_scheme = "LATIN"    # "LATIN" = ISO-8859-1, "UTF16" = UCS-2/UTF-16BE
+# text = "YO6RZV"                 # 广播的文本内容
+###############################################################################
+
+###############################################################################
+# 可选：通过 U-STATUS 远程控制 (FlowStation)
+#
+# 允许经过授权的无线电设备从无线电菜单向 ISSI 9999（基站控制地址）
+# 发送 U-STATUS 消息，远程触发基站操作。
+# 只有 authorized_issis 中列出的 ISSI 才能触发命令。
+# 来自授权无线电的未识别状态码将被静默忽略。
+# 启用本功能只需保留此子区块即可；删除则禁用。
+#
+# 可用操作：
+#   "restart"   — 重启 FlowStation 服务（相当于 systemctl restart tetra）
+#   "shutdown"  — 停止 FlowStation 服务（需手动或通过 systemd 重新启动）
+#   "kick_all"  — 注销所有当前已注册的终端；它们会立即重新附着
+#   "ip"        — 向请求者回复（SDS）本机主 IP 地址
+#   "temp"      — 向请求者回复（SDS）本机 CPU/SoC 温度
+#   "info"      — 向请求者回复（SDS）版本号 + IP + 温度
+#
+# "ip"/"temp"/"info" 操作会以文本 SDS 形式应答请求的无线电，使操作员
+# 可以直接从无线电菜单查询基站信息（例如在不知 IP 的热点站点上）。
+# 仅 authorized_issis 才能收到回复。
+#
+[cell_info.sds_command_control]
+authorized_issis = [2260570, 2260571]   # 允许发送命令的 ISSI 列表
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32768             # 无线电向 ISSI 9999 发送的 U-STATUS 码
+action = "restart"
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32769
+action = "shutdown"
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32770
+action = "kick_all"
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32771
+action = "ip"
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32772
+action = "temp"
+#
+[[cell_info.sds_command_control.commands]]
+status_code = 32773
+action = "info"
+###############################################################################
+
+###############################################################################
+
+# 可选：ISSI 访问控制 — 白名单 (FlowStation)
+#
+# 当 issi_whitelist 非空时，只有列表中的 ISSI 才能注册。
+# 其他 ISSI 会收到 D-LOCATION-UPDATE-REJECT 拒绝，无法发起或接收呼叫。
+# 留空或完全省略此区块表示接受任意终端（开放网络）。
+#
+# [security]
+# issi_whitelist = [2260571, 2260572, 2260575]
+
+###############################################################################
+
+# 可选：重启恢复 (FlowStation)
+#
+# 基站进程重启（更新、崩溃或服务重启）后，内存中的注册表会丢失，
+# 但无线电仍然射频驻留在本小区上 — 因此第一次组 PTT 会失败，
+# 直到各无线电自行重新注册（通常只有重新上电才会触发）。
+# 启用此功能后，FlowStation 会将已知终端（ISSI + 持久组 + 节能模式）
+# 持久化到一个小型 JSON 缓存中，并在下次启动时主动向每个终端发送
+# D-LOCATION-UPDATE-COMMAND（ETSI EN 300 392-2 §16.4.4），
+# 强制其重新注册并重新上报组信息，使 PTT 在数秒内恢复正常，无需人工介入。
+#
+# 主动缓存重放默认关闭：启动后立即向一批 ISSI 发送 COMMAND 会增加 MCCH 负载，
+# 因此该功能需要主动启用。与 cell_info.periodic_registration_secs（T351）配合使用。
+#
+# 第二种更轻量的机制 — reactive_enabled — 默认开启，无需缓存：它监听
+# 上行链路，一旦发现有未知但网络许可的无线电发射（任意 PTT/SDS/随机接入），
+# 就向它发送一条限速的 D-LOCATION-UPDATE-COMMAND 强制其重新注册。
+# 它仅在无线电确实在场时才触发，因此射频开销很低，能够修复缓存机制
+# 可能遗漏的"基站重启后 PTT 无响应"问题。遵循相同的白名单 / issi_allowlist
+# 范围限制。设 reactive_enabled = false 可禁用。
+#
+[recovery]
+enabled = true                  # 总开关（默认 false）
+issi_allowlist = []             # 空 = 恢复所有缓存的 ISSI；非空 = 仅恢复列表中的
+cache_path = ""                 # 指定路径；省略或为空 = <配置目录>/recovery_cache.json
+max_replay_attempts = 150       # 每个 ISSI 最多重新发送 COMMAND 的次数（1..=500）
+replay_per_frame = 1            # 扫描期间每 TDMA 帧发出的 COMMAND 数量（1..=18）
+debounce_secs = 5               # 将多次注册变更合并为一次缓存写入的防抖时间（1..=300）
+max_cached_issis = 1024         # 缓存终端的数量上限（1..=65535）
+# reactive_enabled = true         # 发现未知无线电时命令其重新注册（默认 true）
+# reactive_cooldown_secs = 10     # 对同一 ISSI 触发 reactive COMMAND 的最小间隔（2..=120）
+
+###############################################################################
+
+# 可选：轻量级堆栈健康监控 (FlowStation)
+#
+# 一个后台采样器，每隔数秒将几个核心维度（核心循环是否存活、Brew 回程状态、
+# 已附着的无线电数量、下行链路/SDS 拥塞情况）汇总为一个小型快照。
+# 该快照以仪表板顶栏中的"健康"徽章形式呈现（绿色/黄色/红色，带各维度的悬浮提示），
+# 若已配置 Telegram 警报，则当整体健康等级发生变化时，还会发送通知消息。
+#
+# 监控器本身仅观察、不影响系统运行，因此默认开启。可选的软件
+# 看门狗 (restart_on_core_stall) 会在 TETRA 核心循环停止跳动时重启服务 —
+# 这会影响射频和业务，因此默认关闭，由操作员主动选择是否启用。
+# 整个区块可省略；以下为默认值。
+#
+[health]
+enabled = true                    # 监控器总开关（默认 true）
+snapshot_interval_secs = 5        # 快照生成间隔（秒）（1..=300）
+restart_on_core_stall = false     # 软件看门狗：核心循环停滞时自动重启（默认 false）
+core_stall_secs = 10              # 超过此时间未收到 TDMA 时钟滴答，则核心状态标记为严重（2..=600）
+restart_after_critical_secs = 30  # 核心处于严重状态多久后请求重启（1..=3600）
+restart_cooldown_secs = 600       # 两次重启请求之间的最小间隔（10..=86400）
+radios_silent_secs = 900          # 已附着但静默超过此时长，无线电状态标记为降级；0 表示关闭此检查
+dl_queue_degraded = 64            # 下行队列积压达到此值 → 拥塞降级
+dl_queue_critical = 192           # 下行队列积压达到此值 → 拥塞严重
+sds_queue_degraded = 32           # 延迟 SDS 队列积压达到此值 → 拥塞降级
+sds_queue_critical = 128          # 延迟 SDS 队列积压达到此值 → 拥塞严重
+
+###############################################################################
+
+# 可选：内置天气 / METAR SDS 服务 (FlowStation)
+#
+# 一个运行在 FlowStation 内部的天气查询响应器 — 无需外部机器人。
+#
+#   按需查询：  无线电向 service_issi 发送类似 "METAR LROP"（或 "WX LROP"，或直接 "LROP"）
+#               的 SDS 消息，即可收到解码后的 ASCII 气象报告。
+#   定时推送：  FlowStation 每 periodic_interval_secs（最小 300 秒）自动将指定机场的
+#               METAR 报告发送给 periodic_issi。
+#
+# 以上所有配置均可在仪表板的"配置"页面中实时切换和编辑，
+# 仪表板会将更改后的值写回本区块。
+#
+[wx_service]
+enabled = true                 # 按需响应器总开关
+# service_issi = 9998            # 无线电发起天气查询时使用的 ISSI 地址
+# periodic_enabled = false       # 定时广播某个固定机场天气的功能开关
+# periodic_issi = 1001           # 推送目标（ISSI，若 periodic_is_group 为 true 则为 GSSI）
+# periodic_is_group = false      # true 表示 periodic_issi 是一个通话组（GSSI）
+# periodic_icao = "LROP"         # 自动推送 METAR 数据的机场 ICAO 代码
+# periodic_interval_secs = 1800  # 推送周期（秒）（>= 300）
+
+###############################################################################
+
+# 可选：Telegram 告警 — 向基站所有者推送通知 (FlowStation)
+#
+# 当重要事件发生时，向一个或多个 Telegram 会话发送格式规范的消息：
+# 无线电附着/分离、无线电因未响应周期性注册（T351）而被判定丢失、
+# Brew 回程通断变化、无线电通过 LIP/APRS 信标上报位置、
+# 或堆栈日志中出现 WARN/ERROR 级别消息。
+#
+# 最简单的配置方式是通过仪表板的"Telegram 告警"菜单，它会引导您
+# 用 @BotFather 创建机器人、一键检测您的 Chat ID 并保存。
+# 配置值会自动写回本区块。您也可以手动在此配置：
+#
+#   1. 向 @BotFather 发送 /newbot 命令，复制获得的 bot token。
+#   2. 向您的机器人发送任意消息（如 /start），使其能看到您的会话。
+#   3. 获取您的数字 Chat ID（仪表板的"检测 Chat ID"按钮可自动完成，
+#      或访问 https://api.telegram.org/bot<TOKEN>/getUpdates 读取 message.chat.id 字段）。
+#
+# chat_ids：正数 = 私人会话；负数 = 群组/频道。每个 chat_id 都会收到所有
+# 已启用的告警。下方各分类标志默认均为 true。
+#
+# [telegram_alerts]
+# enabled = true
+# bot_token = "123456789:AAExampleBotTokenStringFromBotFather"
+# chat_ids = [123456789]          # 一个或多个；负数 ID 表示群组/频道
+# alert_connect = true            # 无线电附着
+# alert_disconnect = true         # 无线电分离
+# alert_t351 = true               # 无线电因未响应 T351 而被标记为丢失
+# alert_lip = true                # LIP/APRS 位置信标
+# alert_backhaul = true           # Brew 回程通断变化
+# alert_critical_logs = true      # 转发堆栈的 WARN/ERROR 日志行
+
+###############################################################################
+
+# 可选：紧急状态处理 (FlowStation)
+#
+# 无线电通过 U-STATUS PDU 发出紧急信号（预编码状态 = 紧急，状态码 0，
+# 参见 ETSI EN 300 392-2 表 14.72），紧急状态下会周期性重发；退出时不发送任何消息。
+# 紧急呼叫（U-SETUP，呼叫优先级 15）同样会触发紧急状态。紧急状态仅限本地：
+# 会在仪表板上显示持久横幅并（可选）发送 Telegram 告警，不会
+# 转发到 Brew，除非设置了 forward_to_brew。由于无线电退出时不发消息，
+# 会话会在最后一次收到紧急状态后的 clear_timeout_secs 秒后自动清除
+# （或当该 ISSI 发送了非紧急状态码时，或操作员在仪表板中手动清除时）。
+# 本功能始终处于激活状态，以下为默认值。
+#
+[emergency]
+forward_to_brew = false     # 是否同时将紧急状态转发到 Brew（默认 false，仅本地）
+telegram_alert = true       # 紧急状态进入时发送 Telegram 告警，重发时不发（默认 true）
+clear_timeout_secs = 30     # 超过此秒数未收到新的紧急状态则自动清除（5..=600）
+
+###############################################################################
+
+# 可选：Web 仪表板 — 可通过 http://<基站IP>:8080 访问 (FlowStation)
+#
+# 终端、活动呼叫、日志、配置编辑器、踢出与 SDS 的实时视图。
+#
+[dashboard]
+port = 8080                    # 仪表板监听的 HTTP 端口（默认值：8080；不得为 0）
+bind = "0.0.0.0"               # 绑定地址（默认值：0.0.0.0 = 所有接口；127.0.0.1 表示仅本地可访问）
+#
+# 可选：HTTP Basic Auth — 为仪表板设置用户名和密码保护。
+# 设置后，浏览器首次访问时会弹出原生的登录对话框。
+# 用户名和密码必须同时设置或同时不设置。
+#
+# 安全提示：HTTP Basic Auth 以 base64 传输凭证（未加密）。
+# 在 LAN 环境下可防止随意/意外访问，但在公共互联网上缺乏 TLS 加密则不安全。
+# 面向公网的部署，请在仪表板前方放置支持 HTTPS 的反向代理
+#（例如 nginx、Caddy）。
+#
+# username = "admin"
+# password = "changeme"
+#
+# 可选：公共只读概览 (FH-FEAT-033)。当设为 true 且已设置用户名/密码时，
+# 匿名访客可看到一个只读的小型状态页面（无线电数量、活动呼叫、
+# 频率/射频状态、网络状态）和一个"登录"按钮 — 无法看到控制面板、
+# 配置或原始遥测。此项依赖已配置的认证；否则无效。默认值：false。
+# public_overview = true
+# 可选：高级 DGNA 控制。当为 true 时，仪表板显示 SS-DGNA 附着模式选择器，
+# 操作员可以按次分配时逐个选择模式。当为 false 时，仪表板静默使用
+# [cell_info].dgna_attachment_mode。
+# show_dgna_attachment_mode_picker = true
+#
+# 可选：FlowStation git 源码目录的显式路径，供仪表板的"更新"按钮使用。
+# 默认情况下，仪表板会从二进制文件路径向上遍历查找 .git 目录，
+# 然后依次尝试 /opt/tetra-bluestation、/opt/flowstation、/opt/tetra-bs、/opt/tetra。
+# 如果您的二进制文件不在 git 克隆目录内（例如二进制文件复制到了
+# /usr/local/bin/，而源码在 /opt/...），或自动检测到了错误的目录，
+# 请在此设置正确的路径。
+# source_dir = "/opt/tetra-bluestation"
+
+###############################################################################
+
+# 可选：遥测导出 — 通过 WebSocket 连接将基站实时状态推送至远程收集器。
+# 只有包含整个区块时此功能才会生效。
+#
+# 如果启用，`host` 和 `port` 均为必填（无默认值）—
+# 一个空的 [telemetry] 标头会导致解析失败。取消注释并填写您的收集器。
+#
+# [telemetry]
+# host = "telemetry.example.com"     # 收集器主机名或 IP（必填）
+# port = 443                          # 收集器端口（必填）
+# use_tls = true                      # 可选：使用 wss:// 替代 ws://（默认 false；设置 ca_cert 时需设为 true）
+# ca_cert = "/etc/tetra-bluestation/telemetry-ca.der"  # 可选：私有 CA 的 DER 格式 CA 证书，需配合 use_tls 使用
+# 可选：HTTP Basic Auth — 同时设置用户名和密码，或都不设置。
+# Basic Auth 为 base64 编码（未加密）；在互联网上传输时请务必配合 use_tls = true。
+# username = "bts"
+# password = "changeme"
+
+###############################################################################
+
+# 可选：控制端点 — 出站控制/管理连接。启用后，
+# FlowStation 会通过 WebSocket 连接至外部控制服务器。省略整个
+# 区块即可禁用（默认关闭）。
+#
+# 如果包含此区块，host 和 port 均为必填。
+#
+# [command]
+# host = "control.example.com"        # 控制服务器地址（区块存在时必填）
+# port = 443                          # 控制服务器端口（区块存在时必填）
+# use_tls = true                      # 可选：使用 wss://（默认 false；设置 ca_cert 时需设为 true）
+# ca_cert = "/etc/tetra-bluestation/control-ca.der"  # 可选：私有 CA 的 DER 格式 CA 证书，需配合 use_tls 使用
+# 可选：HTTP Basic Auth — 同时设置用户名和密码，或都不设置。
+# Basic Auth 为 base64 编码（未加密）；对于非本机访问，请使用 use_tls = true。
+# username = "station"
+# password = "changeme"
+
+###############################################################################
+
+# Brew 协议：通过 TETRA Homebrew 协议连接到 TetraPack/BrandMeister 服务器。
+# 无线电归属的所有组都会作为归属信息上报到 Brew。
+# 取消注释此区块即可自动启用 Brew 实体。
+# 参见：https://wiki.tetrapack.online/books/tetra/page/brew
+
+[brew]
+
+# 服务器地址
+host = "core.tetrapack.online"
+port = 443
+
+# 是否使用 TLS（wss:// / https://）
+tls = true
+
+# 在 BrandMeister 中注册的 HTTP Digest 认证凭据。
+# 用户名应为您的 SSID（DMR ID + 2 位后缀）。
+# 密码是您的 BrandMeister 热点密码。
+username = 123456700
+password = "012345"
+
+# 重连延迟（秒）
+reconnect_delay_secs = 10
+
+# 播放入站 Brew 抖动缓冲时的额外初始延迟帧数。
+# 默认值：0。若在通话开始时听到音频失真，可适当增大。
+# jitter_initial_latency_frames = 0
+
+# 是否在本地客户端与 Brew 之间转发 SDS。默认启用。
+feature_sds_enabled = true
+
+# 是否将 RSSI 测量值以 Service (0xf4) JSON 消息的格式导出到 Brew 服务器。
+# 默认禁用。如果您的 Brew 服务器支持 RSSI 数据接收，请启用。
+# 启用后，每个无线电的信号强度最多每 5 秒发送一次。
+# 格式：{"issi": 2260570, "rssi_dbfs": -42.3}
+# feature_rssi_export = false
+
+# 可选：限制出站方向的 Brew 转发目标 SSI。
+# 这是一个仅针对出站的过滤器 (FH-FEAT-032 R3)：只有发往这些 SSI 的呼叫/SDS
+# 才会从本小区转发到 Brew。入站 Brew 流量不受此列表过滤 —
+# 来自 Brew 的入站呼叫/SDS 无论白名单如何都会送达
+#（仅 local_ssi_ranges 可拒绝入站流量）。保持注释状态时，
+# 所有不在 local_ssi_ranges 范围外的呼叫都会转发到 Brew。
+# whitelisted_ssis = [91]
+
+# 可选的 PBX 网关 ISSI，这些 ISSI 始终被视为可路由到 Brew
+#（适用于不遵循常规 Tetrapack ISSI 规则的电话/PBX 互联 ID）
+# pbx_gateway_issis = [16777184, 16777186]
+
+###############################################################################
+
+# 可选：DAPNET 入站转发 (FlowStation)
+#
+# 接收来自 RWTH 核心发射机推送的 DAPNET 呼叫，并根据下方开关
+# 将其转发为普通 SDS、摩托罗拉 TPG2200 呼叫通知（原始 Type-4 SDS）
+# 和/或通过现有的 Telegram 告警配置发送。
+#
+# 默认禁用。禁用时，FlowStation 不会打开任何 DAPNET 网络连接，
+# 行为与之前版本完全一致。
+#
+# 安全提示：rwth_core_authkey 和 password 是敏感信息。请将实际值保存在
+# 本地配置中，不要将其提交到版本控制。
+#
+# [dapnet]
+# enabled = false
+# api_url = "https://hampager.de/api/calls"
+# username = ""
+# password = ""
+# poll_interval_secs = 30
+#
+# forward_sds = false
+# forward_callout = false
+# forward_telegram = false
+#
+# sds_source_issi = 9999
+# sds_dest_issi = 0
+# sds_dest_is_group = false
+# ric_issi_routes = { "0632585" = 2632585 }
+# ric_gssi_routes = { "0004520" = 80 }
+# sds_allowed_rics = []
+# callout_allowed_rics = []
+# telegram_allowed_rics = []
+#
+# callout_source_issi = 9999
+# callout_dest_issi = 0
+# callout_incident_base = 2
+# callout_text_prefix = "DAPNET"
+#
+# telegram_prefix = "DAPNET"
+#
+# rwth_core_enabled = true
+# rwth_core_host = "dapnet.afu.rwth-aachen.de"
+# rwth_core_port = 43434
+# rwth_core_device = "FlowStation"
+# rwth_core_version = "1.0"
+# rwth_core_callsign = ""
+# rwth_core_authkey = ""
+# rwth_messages_limit = 100
+
+###############################################################################
+
+# 可选：Snom/桌面电话 ActionURL 触发器，用于摩托罗拉 TPG2200 呼叫通知
+#
+# 配置 Snom 功能键 / ActionURL 调用：
+#   http://<flowstation>:<dashboard_port>/api/action/tpg2200?token=<token>
+#
+# 可选的文本覆盖：
+#   http://<flowstation>:<dashboard_port>/api/action/tpg2200?token=<token>&text=ALARM
+#
+# 每个被接受的请求都会向 dest_issi 发送一条 Type-4 SDS 呼叫通知。
+# 事件编号从 incident_base 开始，每次触发后递增，
+# 超过 256 后回绕。
+#
+# 该端点有意不依赖仪表板的 cookie 会话，因为电话设备无法可靠保持会话。
+# 请设置足够长且随机的 token，并不要将仪表板端口暴露在公网上。
+#
+# [tpg2200_action]
+# enabled = false
+# token = ""
+# source_issi = 9999
+# dest_issi = 0
+# incident_base = 1
+# default_text = "ALARM"
+# max_text_chars = 80
+
+###############################################################################
+
+# 可选：通过 Asterisk AMI PJSIPNotify 向 Snom 话机发送显示通知
+#
+# 将 FlowStation 的消息事件以 XML 迷你浏览器弹窗形式推送到 Snom 话机。
+# Asterisk 生成的 SIP NOTIFY 使用：
+#   Event: xml
+#   Content-Type: application/snomxml
+#   Body: SnomIPPhoneText
+#
+# Snom 话机要求：话机上必须启用 xml_notify。如果 Asterisk 以注册 PBX 身份
+# 发送 NOTIFY，则通常的注册过滤器可以保持不变。如果您改为从另一台主机
+# 直接发送 SIP NOTIFY，Snom 需要额外的话机端设置；FlowStation 使用 AMI，
+# 因此 Asterisk 仍是 SIP 发送方。
+#
+# Asterisk 要求：manager.conf 中必须启用 AMI，且 AMI 用户需要具备
+# 执行 PJSIPNotify 的权限。endpoints 配置为 PJSIP 端点名称，例如 "385"。
+#
+# [snom_notify]
+# enabled = false
+# ami_host = "127.0.0.1"
+# ami_port = 5038
+# ami_username = "flowstation"
+# ami_password = ""
+# endpoints = ["385"]
+# notify_sds = true
+# notify_dapnet = true
+# notify_telegram = true
+# sds_directions = ["rx", "net", "tx"]  # rx=TETRA 上行, net=Brew/网络, tx=FlowStation/仪表板
+# dapnet_allowed_rics = []              # 空 = 所有 DAPNET RIC；示例：["0632585", "0000200"]
+# sds_allowed_issis = []                # 空 = 所有 SDS；源或目标 ISSI 匹配即可
+# title_prefix = "FlowStation"
+# notify_event = "xml"
+# content_type = "application/snomxml"
+# subscription_state = "active;expires=30000"
+# max_text_chars = 240
+# connect_timeout_secs = 3
+
+###############################################################################
+
+# 可选：GeoAlarm 半径告警
+#
+# 监听解码后的 TETRA LIP SDS 位置信息。当允许的设备进入
+# FlowStation 周围配置的半径范围内时，告警可通过现有的
+# TPG2200、SDS、Snom/SIP 和 Telegram 通道转发。
+# 白名单为空表示"全部"；黑名单始终优先。
+#
+# meshcom_* 字段和下方的 trigger_meshcom 虽被解析器接受，但
+# 在此版本中无效：FlowStation 未内置 MeshCom 数据源，位置仅来自 TETRA LIP。
+# 请将 MeshCom 开关保持默认值。
+#
+# [geoalarm]
+# enabled = false
+# flowstation_lat = 0.0
+# flowstation_lon = 0.0
+# radius_m = 500.0
+# cooldown_secs = 300
+#
+# trigger_tetra = true
+# trigger_meshcom = true
+#
+# forward_tpg2200 = false
+# forward_sds = false
+# forward_sip = false
+# forward_telegram = false
+#
+# tetra_issi_whitelist = []            # 空 = 所有 TETRA ISSI
+# tetra_issi_blacklist = []
+# meshcom_source_whitelist = []        # 空 = 所有 MeshCom 源
+# meshcom_source_blacklist = []
+#
+# sds_source_issi = 9999
+# sds_dest_issi = 0                    # 0 = 未配置
+# sds_dest_is_group = false
+#
+# tpg2200_source_issi = 9999
+# tpg2200_dest_issi = 0                # TPG2200 ISSI
+# tpg2200_incident_base = 1            # 循环范围 1..=256
+# tpg2200_text_prefix = "GeoAlarm"
+# tpg2200_max_text_chars = 80
+#
+# sip_title_prefix = "GeoAlarm"
+# telegram_prefix = "GeoAlarm"
+
+###############################################################################
+
+# 可选：Asterisk SIP/RTP 桥接 — 与 Brew 并行运行，而非替代。
+# 只有 service_numbers 中列出的目的地才会被路由到 Asterisk；
+# 其他所有流量仍走正常的本地/Brew 路径。
+#
+# 示例：TETRA 拨号串 91600，outbound_prefix="91" 且 strip=true 时，
+# 会变成 SIP 用户 600，但这仅因为 "600" 已列在下方。
+#
+# 注意：Asterisk 支持在 FlowStation 中为功能开关控制。默认构建版本
+# 不包含此功能。要使用此区块，设备二进制文件必须用以下命令构建：
+#   cargo build --release --features asterisk
+# 且需要安装原生的 tetra-codec (outerplane) ACELP 库。
+# 默认构建版本（DAPNET / Snom / GeoAlarm / 仪表板）无需此库即可工作。
+
+# [asterisk]
+# enabled = true
+# outbound_prefix = "91"
+# strip_outbound_prefix = true
+# inbound_prefix = "T"
+# register = true
+# codec = "PCMU"
+# service_numbers = ["600", "601"]
+# rtp_port_min = 30000
+# rtp_port_max = 30100
+# bind_addr = "0.0.0.0"
+# bind_port = 5062
+# remote_host = "127.0.0.1"
+# remote_port = 5060
+# contact_host = "127.0.0.1"
+# from_domain = "127.0.0.1"
+# local_user = "flowstation"
+# auth_user = "flowstation"
+# password = ""
+# realm = "asterisk"
