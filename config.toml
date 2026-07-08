@@ -127,7 +127,7 @@ mnc = 9999
 freq_band = 4                       # 400MHz 频段
 main_carrier = 1597                 # + 1597 × 25kHz = 39925kHz
 secondary_carrier = 1598         # 可选的第二载波，通常为相邻载波（+/- 25 kHz）
-dual_carrier_enabled = true        # 仪表板中"双载波 ON/OFF"开关，控制上述载波。
+dual_carrier_enabled = false        # 仪表板中"双载波 ON/OFF"开关，控制上述载波。
                                      # 省略 = 开启。设为 false 可保留编号但以单载波运行。
 duplex_spacing = 3                  # 上行与下行之间采用 5MHz 间隔（适用于 400 MHz 频段）
 # custom_duplex_spacing = 7600000   # 除非您在无线电中烧录了自定义双工间隔，否则请勿取消注释
@@ -170,7 +170,7 @@ hangtime_secs = 5
 # 开启 TCH/S 业务信道，导致组内其他人听到"无声结束"；强制重新建立呼叫可解决
 # 此问题。默认关闭 — 新型无线电能正常复用电路并受益于更低的抢权延迟，
 # 因此仅当小区中仍在使用这些老旧设备时才启用。
-release_group_on_same_speaker_retake = true
+release_group_on_same_speaker_retake = false
 
 # DGNA（动态组编号分配）空中接口机制。
 # 开启（默认）：操作员发起的重组以 SS-DGNA ASSIGN/DEASSIGN 形式通过 CMCE
@@ -184,10 +184,10 @@ release_group_on_same_speaker_retake = true
 # 注意：即使发送了正确的 SS-DGNA，如果终端写频（codeplug）中未配置 DGNA 通知，
 # 终端也不会显示任何内容 — 这是写频配置的缺失，而非协议栈缺陷。
 # 省略 = true。仅当需要回退到传统路径时设为 false。
-# dgna_use_ss_facility = true
+dgna_use_ss_facility = true
 # 仪表板隐藏高级选择器时使用的默认 SS-DGNA 附着模式。
 # 有效值：0..5（ETSI 表 51）。默认值：0 = 永久附着 (AttachedPermanently)。
-# dgna_attachment_mode = 0
+dgna_attachment_mode = 0
 
 # 最大通话时长（秒）— 相当于 FlowStation 对 ETSI EN 300 392-2 §14.9.1 T310 的实现。
 # 超过此时长后，无论通话是否活跃，基站都会发送 D-RELEASE。
@@ -199,7 +199,7 @@ call_timeout_secs = 600
 # 收到任何语音帧，基站将强制进入 TX-CEASED 状态并开始保持计时。
 # 必须大于 T.213（1 秒）以容忍 DTX 和短暂的射频衰落。
 # 默认值：3 秒。有效范围：1–30。
-# ul_inactivity_secs = 3
+ul_inactivity_secs = 3
 
 # 周期性注册间隔（秒）— 相当于 FlowStation 对 ETSI T351 的实现。
 # 移动台必须在此间隔内通过 D-LOCATION-UPDATE-ACCEPT（周期位置更新）
