@@ -417,7 +417,7 @@ action = "info"
 # 范围限制。设 reactive_enabled = false 可禁用。
 #
 [recovery]
-enabled = true                  # 总开关（默认 false）
+enabled = false                  # 总开关（默认 false）
 issi_allowlist = []             # 空 = 恢复所有缓存的 ISSI；非空 = 仅恢复列表中的
 cache_path = ""                 # 指定路径；省略或为空 = <配置目录>/recovery_cache.json
 max_replay_attempts = 150       # 每个 ISSI 最多重新发送 COMMAND 的次数（1..=500）
